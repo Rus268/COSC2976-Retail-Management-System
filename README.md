@@ -1,0 +1,2 @@
+# COSC2976-Retail-Management-System
+A simple retail management system for a department store. The cashiers of the store managers from the department store are the ones that use this system to process customers' purchases. The program was created based on requirement of assignment for COSC2976-Fundamental programming as a part of the Master of AI program by RMIT University Vietnam
