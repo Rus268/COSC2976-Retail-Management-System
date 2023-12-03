@@ -36,7 +36,8 @@ order_history = [
             {"Apple": 2, "Banana": 1},
             {"Orange": 1, "Pear": 1},
             {"Pineapple": 1}
-        ]
+        ],
+        "total_spend": [3.80, 6.65, 4.75],
     },
     {
         "customer_name": "Peter Parker",
@@ -44,13 +45,15 @@ order_history = [
             {"Pineapple": 2, "Banana": 1},
             {"Pear": 1},
             {"Apple": 1, "Orange": 1}
-        ]
+        ],
+        "total_spend": [11.75, 4.00, 3.80],
     },
     {
         "customer_name": "Bruce Wayne",
         "purchase_history": [
             {"Apple": 2, "Banana": 1}
-        ]
+        ],
+        "total_spend": [3.80]
     },
     {
         "customer_name": "Clark Kent",
@@ -58,14 +61,16 @@ order_history = [
             {"Pineapple": 2, "Banana": 1},
             {"Pear": 1},
             {"Apple": 1, "Orange": 1}
-        ]
+        ],
+        "total_spend": [11.75, 4.00, 3.80],
     },
     {
         "customer_name": "John Doe",
         "purchase_history": [
             {"Orange": 1, "Pear": 1},
             {"Pineapple": 1}
-        ]
+        ],
+        "total_spend": [6.65, 4.75],
     },
 ]
 
@@ -92,7 +97,7 @@ def place_order():
     discount = discount_percentage(membership)
     total_price = order_list_price_cal(order_list) * (1 - discount)
     create_customer(customer, membership)
-    add_purchase_history(customer, order_list)
+    add_purchase_history(customer, order_list, total_price)
     # Display the format cost for the customer.
     print()
     print("="*50)
@@ -313,22 +318,14 @@ def display_most_valuable_customer():
     print("-"*30)
     mvc = {"customer_name": None, "total_purchase": 0} # Initialize the most valuable customer dictionary
     for customer in order_history:
-        total = total_purchase(customer["purchase_history"]) # Calculate the total purchase of the customer
+        total = sum(customer.get("total_spend",[])) # Calculate the total purchase of the customer
         if total > mvc["total_purchase"]: # Check if the total purchase of the customer is greater than the current most valuable customer
             mvc["customer_name"] = customer["customer_name"] # Update the most valuable customer name
             mvc["total_purchase"] = total # Update the most valuable customer total purchase
-        
     print(f'Customer name: {mvc["customer_name"]}')
     print(f'Total Purchase: {mvc["total_purchase"]:.2f}')
     print("-"*30)
 
-def total_purchase(purchase_history: list) -> float:
-    """Calculate the total purchase of the customer from the purchase history directory"""
-    total = 0.00
-    for purchase in purchase_history:
-        for product in purchase:
-            total += get_product_price(product) * purchase[product]
-    return total
 
 def product_input(prompt: str) -> str:
     """Ask the user to enter the name of the product and continue to ask until the product name match a name in the product directory"""
@@ -424,7 +421,7 @@ def simplify_order_dict(input_dict: dict) -> dict:
         new_dict.update({name:quantity})
     return new_dict
 
-def add_purchase_history(customer_name, recent_order: list):
+def add_purchase_history(customer_name, recent_order: list, total_price: float):
     """Add the customer order history to the order history directory
     
     Parameter:
@@ -438,8 +435,9 @@ def add_purchase_history(customer_name, recent_order: list):
     for customer in order_history:
         if customer["customer_name"] == customer_name: # Check if the customer name is in the order history
             customer["purchase_history"].append(edit_order) # Get the purchase history of the customer from the order history
+            customer["total_spend"].append(total_price)
             break
-    order_history.append({"customer_name": customer_name, "purchase_history": [edit_order]})
+    order_history.append({"customer_name": customer_name, "purchase_history": [edit_order],  "total_spend":[total_price]}) # Add the customer order history to the order history directory"
 
 if __name__ == "__main__":
     main()
