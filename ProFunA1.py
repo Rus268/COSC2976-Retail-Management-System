@@ -323,8 +323,8 @@ def display_most_valuable_customer():
     print("-"*30)
 
 def total_purchase(purchase_history: list) -> float:
-    """Calculate the total purchase of the customer"""
-    total = 0
+    """Calculate the total purchase of the customer from the purchase history directory"""
+    total = 0.00
     for purchase in purchase_history:
         for product in purchase:
             total += get_product_price(product) * purchase[product]
@@ -440,6 +440,6 @@ def add_purchase_history(customer_name, recent_order: list):
             customer["purchase_history"].append(edit_order) # Get the purchase history of the customer from the order history
             break
     order_history.append({"customer_name": customer_name, "purchase_history": [edit_order]})
-    
+
 if __name__ == "__main__":
     main()
