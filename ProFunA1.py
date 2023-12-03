@@ -4,7 +4,8 @@
 # Import the sys module to allow the program to exit
 import sys
 
-# Initialize the product directory
+# Initialize the product directory. This is to allow for the program to allow multiple products to be added.
+# In this directory, we are unable to truely identify the product as there is no unique identifier for the product due as we are assuming the product name is unique.
 product_directory = [
     {"name": "Apple", "price": 1.00},
     {"name": "Banana", "price": 2.00},
@@ -13,7 +14,9 @@ product_directory = [
     {"name": "Pineapple", "price": 5.00},
 ]
 
-# Initialize the customer directory with the customer name and membership status
+# Initialize the customer directory with the customer name and membership status.
+# This is to allow for the program to allow multiple customers to be created.
+# In this directory, we are unable to truely identify the customer as there is no unique identifier for the customer as we are assuming the customer name is unique.
 customer_directory = [
     {"name": "John Doe", "membership": False},
     {"name": "Tony Stark", "membership": True},
@@ -24,7 +27,7 @@ customer_directory = [
 
 # Initialize the order history with the customer name, order items, total price, membership discount, and final price. 
 # This is to allow for the program to allow multiple products to be purchased in a single order.
-# In this directory, we are unable to truely identify the customer as there is no unique identifier for the customer or the order due to the limitation of the program.
+# In this directory, we are unable to truely identify the order as there is no unique identifier for the order as we are assuming the customer name is unique and using it as the primary search key.
 # We will organise the order history by append the most recent order to the last index of the list.
 order_history = [
     {
@@ -46,9 +49,7 @@ order_history = [
     {
         "customer_name": "Bruce Wayne",
         "purchase_history": [
-            {"Apple": 2, "Banana": 1},
-            {"Orange": 1, "Pear": 1},
-            {"Pineapple": 1}
+            {"Apple": 2, "Banana": 1}
         ]
     },
     {
@@ -62,15 +63,12 @@ order_history = [
     {
         "customer_name": "John Doe",
         "purchase_history": [
-            {"Apple": 2, "Banana": 1},
             {"Orange": 1, "Pear": 1},
             {"Pineapple": 1}
         ]
     },
 ]
 
-
-# In this section I will have all of the specialise function that will be used in the program.
 def main():
     """Main function"""
     print()
@@ -78,7 +76,7 @@ def main():
     menu()
 
 def place_order():
-    
+    """Place an order for a customer"""
     customer= input("Enter the name of the customer [eg: John Doe]: ").strip().title() # Ask the user to enter the customer name and format the customer name to title case and strip any whitespace
     # Ask the user to enter the customer name, product name, and quantity of the product and continue to ask until the order is completed
     order_list = add_order_to_list()
@@ -94,6 +92,7 @@ def place_order():
     discount = discount_percentage(membership)
     total_price = order_list_price_cal(order_list) * (1 - discount)
     create_customer(customer, membership)
+    add_purchase_history(customer, order_list)
     # Display the format cost for the customer.
     print()
     print("="*50)
@@ -107,7 +106,6 @@ def place_order():
     print(f'{customer} gets a discount of {discount*100:.0f}%.')
     print(f'Price to pay: {total_price:.2f} (AUD)')
     print("="*50)
-    add_purchase_history(customer, order_list)
 
 def add_order_to_list() -> list:
         """This function take the customer order and add them into a list. It will ignored any product that does not have a price in the product directory.
@@ -196,8 +194,8 @@ def menu():
   
 def add_update_product():
     """Add or update the product from the product directory"""
-    product_list = new_product_list_input("Enter products name separate by commas [Eg: Apple, Pear, Mango]") # Format the list elements into correct format strip any whitespace and capitalize the first letter of each word.
-    price_list = new_price_list_input("Enter the product price separte by commas [Eg: 2, 10, 30]")  # Process the price and put it into a list
+    product_list = new_product_list_input("Enter products name separate by commas [Eg: Apple, Pear, Mango]: ") # Format the list elements into correct format strip any whitespace and capitalize the first letter of each word.
+    price_list = new_price_list_input("Enter the product price separte by commas [Eg: 2, 10, 30]: ")  # Process the price and put it into a list
     for i, p in enumerate(product_list): # Loop throught the product list for the product name and index
         if p in [product["name"] for product in product_directory]: # Check if the product name is in the product directory
             index = [product["name"] for product in product_directory].index(p)  # Find the index of the product in the product directory
@@ -225,8 +223,9 @@ def new_product_list_input(prompt) -> list:
     Return:
     - new_list: the list that contains the product name
     """
+    new_list = []
     input_str = input(prompt)
-    new_list = input_str.strip().split(',')
+    input_list = input_str.strip().split(',')
     for element in input_list:
         new_list.append(element.strip().title())
     return new_list
@@ -243,7 +242,11 @@ def new_price_list_input(prompt) -> list:
     """
     input_str = input(prompt)
     new_list = input_str.strip().split(',')
-    new_list = [int(i) for i in new_list]
+    for i, element in enumerate(new_list):
+        try:
+            new_list[i] = float(element.strip())
+        except ValueError:
+            new_list[i] = None
     return new_list
 
 def display_customer():
@@ -275,19 +278,12 @@ def display_product():
     print("-"*30)
 
 def display_customer_order_history():
-    """
-    Display the customer order history from the order history directory
-    
-    Input:
-    - Name of the customer
-
-    Return:
-    - None
-    """
+    """Display the customer order history from the order history directory"""
     print("Order History")
     print("-" * 30)
     while True:
         customer_name = input("Enter the name of the customer [eg: John Doe]: ").strip()
+        print()
         for customer in order_history:
             if customer["customer_name"] == customer_name:
                 print(f"This is the order history of {customer_name}.")
@@ -302,7 +298,7 @@ def display_customer_order_history():
                 print()
 
                 for index, purchase in enumerate(customer["purchase_history"], start=1):
-                    print(f"Purchase {index}", end=" "*15)
+                    print(f"Purchase {index}", end=" "*10)
                     for item in sorted(unique_items):
                         quantity = purchase.get(item, 0)
                         print("{:<15}".format(str(quantity)), end="")
@@ -412,8 +408,8 @@ def discount_percentage(membership: bool) -> str:
     else:
         return 0.00
 
-def simplify_order_list(input_list: list) -> list:
-    """Format the list elements into correct format strip any whitespace and capitalize the first letter of each word.
+def simplify_order_dict(input_dict: dict) -> dict:
+    """Format the dict elements into a simplify format and strip any whitespace and capitalize the first letter of each word.
     
     Parameter:
     - input_list: the list that will be formatted
@@ -421,12 +417,12 @@ def simplify_order_list(input_list: list) -> list:
     Return:
     - new_list: the list that contains the formatted list elements
     """
-    new_list = []
-    for element in input_list:
+    new_dict = {}
+    for element in input_dict:
         name = element["product_name"].strip().title()
         quantity = element["quantity"]
-        new_list.append({name: quantity})
-    return new_list
+        new_dict.update({name:quantity})
+    return new_dict
 
 def add_purchase_history(customer_name, recent_order: list):
     """Add the customer order history to the order history directory
@@ -438,12 +434,12 @@ def add_purchase_history(customer_name, recent_order: list):
     Return:
     - None
     """
-    recent_order = simplify_order_list(recent_order)
+    edit_order = simplify_order_dict(recent_order)
     for customer in order_history:
         if customer["customer_name"] == customer_name: # Check if the customer name is in the order history
-            customer["purchase_history"].append(recent_order) # If the customer name is in the order history then append the recent order to the purchase history
-        else:
-            order_history.append({"customer_name": customer_name, "purchase_history": recent_order})
-
+            customer["purchase_history"].append(edit_order) # Get the purchase history of the customer from the order history
+            break
+    order_history.append({"customer_name": customer_name, "purchase_history": [edit_order]})
+    
 if __name__ == "__main__":
     main()
