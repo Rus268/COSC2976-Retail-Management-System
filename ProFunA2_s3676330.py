@@ -4,15 +4,13 @@
 import sys
 import os
 
-# Define class for the program
-# CUSTOMER:
+# Define the required classes for the program
 class Customer:
     # Initialise the customer object with given ID, name, and value. If value not provided, default to 0.00
     def __init__(self, id, name:str, value:float = 0.00):
         self.id = id
         self.name = name
         self.value = value
-
     # Calculate the discount which return (0,price) - where the first value is discount rate and second is input price.
     # This will be the super method and will have more subclass implement
     def get_discount(self,price):
@@ -30,7 +28,6 @@ class Customer:
     # Print the class Customer attributes and the discount rate associated:
     def display_info(self):
         return print(f"ID: {self.id}\nName: {self.name}\nValue: {self.value}\nDiscount Rate: 0")
-
 # Create a new member class that inherited it attributes from customer
 class Member(customer):
     discount_rate = 0.05 # initialise a class inherited variable
@@ -80,7 +77,6 @@ class VipMember(customer):
         
     def set_threhold(vip_cls, new_threshold:float):
         vip_cls.threshold = new_threshold
-
 # Product class
 class Product:
 
@@ -107,8 +103,6 @@ class Product:
     
     def display_info(self):
         print(f"ID: {self.id}\nName: {self.name}\nPrice: {self.price}\nStock: {self.stock}")
-
-
 # Order Class
 class Order:
     """This class is to manage the order of the customer"""
@@ -131,8 +125,6 @@ class Order:
         return self.quantity
     
     def update_product_stock(self):
-        
-
 # Record
 class Record:
     """This class is the central data repository of the program"""
@@ -148,7 +140,7 @@ class Record:
         self.product_list = [] # In this list we will be storeing a list of product id in order to ensure uniqueness
 
     def read_customer(self):
-        """This function will look for the  """
+        """This function will look for the customer file and import it into the record"""
         try:
             with open(customer_file,"r") as f:
                 line = f.readline()
@@ -156,17 +148,21 @@ class Record:
                     id, name, discount_rate, value = line.strip().split(',')
                     customer_id = customer (id, name, discount_rate, value)
                     customer_list.append(customer_id)
-        except FileNotFoundError
+        except FileNotFoundError:
+            raise FileNotFoundError(f'File {customer_file} is missing!')
     
     def read_product(self):
-        """This function will read the specify file that was  """
-        with open(product_file,"r") as f:
-            line = f.readline()
-            while line:
-                item_id, name, price, stock = line.strip().split(',')
-                product_id = product(item_id, name, price, stock)
-                self.product_list.append(product_id) # Add the new product into the product id
-    
+        try:
+            """This function will read the product file and import into the record """
+            with open(product_file,"r") as f:
+                line = f.readline()
+                while line:
+                    item_id, name, price, stock = line.strip().split(',')
+                    product_id = product(item_id, name, price, stock)
+                    self.product_list.append(product_id) # Add the new product into the product id
+        except FileNotFoundError:
+            raise FileNotFoundError(f'File {product_file} is missing!')
+
     def find_customer(key:str = "id", value):
         """ 
         Take a search key and find the customer detail from the customer list
@@ -197,6 +193,35 @@ class Record:
         """
         pass
 
+def menu():
+    def display_menu():
+        """Display the menu"""
+        print("#"*30)
+        print("You can choose from the following option:")
+        print("1. Place an order")
+        print("2. Display exiting customers")
+        print("3. Display exiting products")
+        print("0. Exit the program")
+        print("#"*30)
+        print()
+    while True:
+        display_menu()
+        user_input = input("Choose one option: ")
+        print()
+        if user_input == "1":
+            place_order()
+        elif user_input == "2":
+            add_update_product()
+        elif user_input == "3":
+            display_product()
+            sys.exit()
+        else:
+            print("Invalid input, please try again")
+            continue
+        # Pause the program and wait for the user to press enter to continue
+        print()
+        input("Press enter to continue!")
+        print()
 
 def main():
     # Initalise main system record.
@@ -207,7 +232,8 @@ def main():
     except FileNotFoundError as e:
         # Exit the program if the require file is missing and notify the user of the missing file.
         sys.exit(str(e)) 
-
+    else:
+        menu()
 
 
 if __name__ == "__main__":
