@@ -326,6 +326,9 @@ def display_most_valuable_customer():
     print(f'Total Purchase: {mvc["total_purchase"]:.2f}')
     print("-"*30)
 
+# Currently the most valuable customer is assume to be the customer that has the highest total purchase. 
+# If ther are multiple customers with the same total purchase, the program will only display the first customer that has the highest total purchase
+# To improve this function, we can add a new key to the order history directory to store the number of orders the customer has made and use that to determine the most valuable customer in the next version of the program.
 
 def product_input(prompt: str) -> str:
     """Ask the user to enter the name of the product and continue to ask until the product name match a name in the product directory"""
