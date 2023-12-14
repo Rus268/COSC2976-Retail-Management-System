@@ -61,9 +61,8 @@ class VipMember(Customer):
     # Initialise the class throught initialising the parent class
     def __init__ (self, id, name:str, value:float = 0.00):
         super().__init__(id, name, value)
-        self.discount_rate_1 = float(0.10)
-        self.discount_rate_2 = float(self.discount_rate_1 + 0.05) # The second discount rate is alway 5% higher than the first discount rate
-        
+        self.discount_rate_1 = 0.10 # The default first discount rate is alway 10%
+        self.discount_rate_2 = 0.15 # The default second discount rate is alway 5% higher than the first discount rate
     
     def get_discount(self, price):
         if price <= self.threshold:
@@ -338,13 +337,13 @@ def get_info(Data:Record):
             print("We have two type of membership: V for VIP and M for Member")
             type = input("Please enter the membership type [e.g. V or M]: ")
             if type == "V":
-                id = "V" + str(len(Data.customer_list) + 1)
+                id = generate_new_customer_id(type,Data)
                 customer = VipMember(id,name,0.00)
             elif type == "M":
-                id = "M" + str(len(Data.customer_list) + 1)
+                id = generate_new_customer_id(type,Data)
                 customer = Member(id,name,0.00)
         elif membership == "n":
-            id = "C" + str(len(Data.customer_list) + 1)
+            id = generate_new_customer_id("C",Data)
             customer = Customer(id,name,0.00)
         else:
             raise ValueError("Invalid input")
@@ -355,6 +354,21 @@ def get_info(Data:Record):
         raise ValueError("Invalid product")
     
     return customer, product, quantity
+
+def generate_new_customer_id(type:str, data:Record):
+    """
+    This function will generate a new unique customer id for the new customer
+    
+    Input:
+    - type: the type of customer
+    - data: the record object that contain the customer list
+    """
+    i = 1
+    new_id = type + str(len(data.customer_list) + i)
+    while new_id in [customer.get_id for customer in data.customer_list]:
+        i += 1
+        id = type + str(len(data.customer_list) + i) 
+    return new_id
 
 def place_order(customer:Customer, product: Product, quantity:int):
     """
