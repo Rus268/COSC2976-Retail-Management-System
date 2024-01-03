@@ -7,6 +7,7 @@
  """
 import sys
 import os
+import datetime
 
 # Define the required classes for the program
 class Customer:
@@ -19,9 +20,12 @@ class Customer:
     - value: the customer value
     """
     def __init__(self, c_id:str, c_name:str, c_value:float = 0.00):
-        self.c_id = c_id
-        self.c_name = c_name
-        self.c_value = c_value
+        self.c_id = c_id # Initialise the customer id using c_id to avoid conflict with the id() function
+        self.c_name = c_name # Initialise the customer name using c_name to avoid conflict with the name() function
+        self.c_value = c_value # Initialise the customer value using c_value to avoid conflict with the value() function
+
+    def __str__(self) -> str:
+        return f"Customer Name: {self.c_name} (ID: {self.c_id})"
 
     def get_discount(self, price) -> tuple:
         """
@@ -37,11 +41,12 @@ class Customer:
         """
         return (0, price)
     # Return the class information and the discount information.
-    def __str__(self) -> str:
-        return f"ID: {self.c_id}\n \
+    def display_info(self) -> str:
+        """This function will print the information of the customer"""
+        print( f"ID: {self.c_id}\n \
                 Name: {self.c_name}\n \
                 Value: {self.c_value}\n \
-                Discount Rate: 0"
+                Discount Rate: 0")
 # Create a new member class that inherited it attributes from customer
 class Member(Customer):
     """
@@ -49,15 +54,17 @@ class Member(Customer):
     It will inherited the attributes from customer class
 
     Input:
-    - m_id: the member id
-    - m_name: the member name
-    - m_value: the member value
+    - c_id: the member id
+    - c_name: the member name
+    - c_value: the member value
     """
-    discount_rate = 0.05 # Initialise a class inherited variable
+    # Initialise the discount rate for the member class.
+    # Since this is the same for all instance of the class, I will be using class variable.
+    discount_rate = 0.05 
     # Initialise the class member and inherited the attributes from customer class.
-    def __init__(self, m_id, m_name:str, m_value:float = 0.00) -> None:
+    def __init__(self, c_id, c_name:str, c_value:float = 0.00) -> None:
         # Initialise the class throught initialising the parent class variable.
-        super().__init__(m_id,m_name,m_value)
+        super().__init__(c_id,c_name,c_value)
     # Update the get_discount method with new calculation
     def get_discount(self, price: float) -> tuple:
         """
@@ -71,13 +78,6 @@ class Member(Customer):
         """
         new_price = price * (1 - self.discount_rate)
         return (self.discount_rate, new_price)
-     # Update new information in the display_infor class
-    def __str__(self) -> str:
-        """This function will print the information of the member"""
-        return f"ID: {self.c_id}\n \
-                Name: {self.c_name}\n \
-                Value: {self.c_value}\n \
-                Discount Rate: {self.discount_rate}"
     # Create a new class method to update the flat discount rate
     # I will be using @classmethod decorator to ensure the method is a class method
     @classmethod
@@ -89,7 +89,6 @@ class Member(Customer):
         - new_rate: the new discount rate
         """
         cls.discount_rate = new_rate
-
 # Create a new vip member class that inherited it attributes from customer
 class VipMember(Customer):
     """
@@ -107,11 +106,11 @@ class VipMember(Customer):
     price = 200.00
 
     # Initialise the class throught initialising the parent class
-    def __init__ (self, v_id, v_name:str, v_value:float = 0.00) -> None:
-        super().__init__(v_id, v_name, v_value)
+    def __init__ (self, c_id, c_name:str, c_value:float = 0.00) -> None:
+        super().__init__(c_id, c_name, c_value)
         self.discount_rate_1 = 0.10 # The default first discount rate is alway 10%
         self.discount_rate_2 = 0.15 # The default second discount rate is alway 5% higher than the first discount rate
-    
+    # Update the get_discount method with new calculation
     def get_discount(self, price:float) -> tuple:
         """
         This function will calculate the discount for the vip member
@@ -123,17 +122,16 @@ class VipMember(Customer):
             return (self.discount_rate_1, price * (1- self.discount_rate_1))
         else:
             return (self.discount_rate_2, price * (1- self.discount_rate_2))
-    
-    def __str__(self) -> str:
+        
+    def display_info(self) -> str:
         """
-        This function will return the string representation of the vip member
+       This function will print out the value of the vip member
         """
-        return f"ID: {self.c_id}\n" \
+        print( f"ID: {self.c_id}\n" \
                f"Name: {self.c_name}\n" \
                f"Value: {self.c_value}\n" \
                f"Discount Rate 1: {float(self.discount_rate_1)}\n" \
-               f"Discount Rate 2: {float(self.discount_rate_2)}"
-    
+               f"Discount Rate 2: {float(self.discount_rate_2)}")
     def set_rate(self, rate_type: str = "rate_1", new_rate:float = 0.00) -> None:
         """
         This function will update the discount rate of the vip member. The default rate type is rate_1
@@ -145,10 +143,10 @@ class VipMember(Customer):
         """
         if rate_type == "rate_1":
             self.discount_rate_1 = float(new_rate)
-            self.discount_rate_2 = float(self.discount_rate_1 + 0.05)
+            self.discount_rate_2 = float(self.discount_rate_1 + (0.05 * self.discount_rate_1))
         elif rate_type == "rate_2":
             self.discount_rate_2 = new_rate
-            self.discount_rate_1 = float(self.discount_rate_2 - 0.05)
+            self.discount_rate_1 = float(self.discount_rate_2 - (0.05 * self.discount_rate_2))
         else:
             raise ValueError("Invalid rate type. Rate can either be 'rate_1' or 'rate_2'")
     
@@ -161,7 +159,7 @@ class VipMember(Customer):
         - new_threshold: the new discount threshold
         """
         cls.threshold = new_threshold
-
+# Create a new product class to store the product information
 class Product:
     """
     This class will store the product information
@@ -172,13 +170,15 @@ class Product:
     - price: the product price
     - stock: the product stock
     """
-    def __init__(self, p_id, p_name:str, price:float, stock:int):
+    def __init__(self, p_id, p_name:str, p_price:float, p_stock:int):
         self.p_id = p_id
         self.p_name = p_name
-        self.price = price # Ensuring price is store as a float
-        self.stock = stock # Ensuring stock is store as an integer
-
-     # Update the price of the product
+        self.p_price = p_price 
+        self.p_stock = p_stock
+    def __str__(self) -> str:
+        """Create a string representation of the product"""
+        return f"Product Name: {self.p_name} (ID: {self.p_id})"
+    
     def set_price(self, new_price:float):
         """
         This function will update the price of the product
@@ -186,7 +186,7 @@ class Product:
         Input:
         - new_price: the new price of the product
         """
-        self.price = float(new_price)
+        self.p_price = float(new_price)
     # Update the stock of the product
     def set_stock(self, new_stock:int):
         """
@@ -195,16 +195,16 @@ class Product:
         Input:
         - new_stock: the new stock of the product
         """
-        self.stock = int(new_stock)
-    def __str__(self):
-        """This function will return the string representation of the product"""
-        return f"ID: {self.p_id}\n \
-                Name: {self.p_name}\n \
-                Price: {self.price}\n \
-                Stock: {self.stock}"
+        self.p_stock = int(new_stock)
 
-# Create a new bundle class that contain a list of product.
-# I will be using composition to ensure the bundle is a list of product.
+    def display_info(self):
+        """This function will return the string representation of the product"""
+        print (f"ID: {self.p_id}\n \
+                Name: {self.p_name}\n \
+                Price: {self.p_price}\n \
+                Stock: {self.p_stock}")
+# Create a new bundle class that is a composition of product class
+# This is to ensure future change to the product class will not affect the bundle class
 class Bundle:
     """
     This class will store the bundle information
@@ -214,37 +214,31 @@ class Bundle:
     - name: the bundle name
     - product_list: the list of product in the bundle
     """
-    def __init__(self, b_id, b_name:str, product_list:list, stock:int):
+    def __init__(self, b_id, b_name:str, b_product_list:list, b_stock:int):
         self.b_id = b_id
         self.b_name = b_name
-        self.product_list = product_list
-        # Initialise the price of the bundle
-        self.price = 0
-        # Calculate the price of the bundle and set it as the price of the bundle
-        for product in self.product_list:
-            self.price += product.price
-        self.price *= 0.8
-        self.stock = stock
+        self.b_product_list = b_product_list
+        # Initialise the price of the bundle by calculate the product include in the bundle
+        self.b_price = sum([product.p_price for product in self.b_product_list]) * 0.8
+        self.b_stock = b_stock
+    
+    def __str__(self)-> str:
+        """This function will return the string representation of the bundle"""
+        return f"Bundle Name: {self.b_name} (ID: {self.b_id})"
 
     def add_product(self, product:Product):
         """This function will add a product into the bundle and also update the bundle price"""
         # Check to see if the product already exit in the bundle
-        if product in self.product_list:
+        if product in self.b_product_list:
             raise ValueError("Product already in the bundle")
-        self.product_list.append(product)
+        self.b_product_list.append(product)
         # Update the price of the bundle after add new product.
         self.update_price()
     
     def update_price(self):
         """This function will update the price of the bundle"""
         # Set the price of the bundle to 0 to recalculate the price
-        self.price = 0
-        # Calculate the new price of the bundle
-        for product in self.product_list:
-            self.price += product.price
-        # Applied a 20% discount of the bundle
-        self.price = self.price * 0.8
-
+        self.b_price = sum([product.p_price for product in self.b_product_list])
     def set_stock(self, new_stock:int):
         """This function will update the stock of the bundle"""
         self.stock = int(new_stock)
@@ -254,7 +248,7 @@ class Bundle:
         print(f"ID: {self.b_id}\nName: {self.b_name}\nStock: {self.stock}")
         for product in self.product_list:
             print(product)
-
+# Create a new order class to store the order information
 class Order:
     """
     This class will store the order information
@@ -269,9 +263,11 @@ class Order:
         This function will initialise the order object.
         """
         self.customer = customer
-        self.product = product 
+        self.product = product
         self.quantity = quantity
-
+        # Record the date teh order is placed
+        self.date = datetime.datetime.now()
+    
     def update_product_stock(self):
         """This function will update the stock of the product after the order is placed"""
         # For this week requirement I will ignored the case there the value is negative.
@@ -281,30 +277,37 @@ class Order:
             # Update the product stock
             self.product.set_stock(self.product.stock)
         except ValueError as exc:
-            raise ValueError("Invalid quantity") from exc
-        
+            raise ValueError("Invalid quantity") from exc        
     def update_customer_value(self):
         """This function will update the customer value after the order is placed"""
         # Calculate the new value and update it.
-        self.customer.value = self.customer.value + (self.product.price * self.quantity)
-    def list_order(self):
-        """This function will list the order"""
-        return f"Customer ID: {self.customer}\nProduct ID: {self.product}\nQuantity: {self.quantity}"
-
+        self.customer.c_value = self.customer.c_value + (self.product.price * self.quantity)
+    def display_info(self):
+        """return a string that represent the order when print"""
+        return f"Customer ID: {self.customer}\n \
+        Product ID: {self.product}\n \
+        Quantity: {self.quantity}" 
 # Create a new record class to store the customer and product list
 class Record:
     """
     This class will be the main record for the program. It will load the customer and product file into the record.
     All main function will be run through this class.
     """
+    # Record will be a singleton pattern class in order to ensure there is only one record in the program.
+    _instance = None # Initialise the class variable
     # I will be using os.path.join to ensure the file path to ensure the file path is correct regardless of operating system used.
-    customer_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment2\\files_CREDITlevel\\customers.txt")
-    product_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment2\\files_CREDITlevel\\products.txt")
+    customer_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_CREDITlevel\\customers.txt")
+    product_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_CREDITlevel\\products.txt")
+    def __new__(cls, *args, **kwargs):
+        """This function will ensure the class is a singleton class"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self):
         """The class will create new instance of customer list and product list"""
-        self.customer_list = [] # In this list we will be storing a list of customer id in order to ensure uniqueness
-        self.item_list = [] # In this list we will be storeing a list of product id and bundle in order to ensure uniqueness
+        self.record_customers= [] # In this list we will be storing a list of customer id in order to ensure uniqueness
+        self.record_items = [] # In this list we will be storeing a list of product id and bundle in order to ensure uniqueness
 
     def read_customer(self):
         """This function will look for the customer file and import it into the record"""
@@ -313,81 +316,59 @@ class Record:
                 line = f.readline()
                 while line:
                     elements = line.strip().split(',')
+                    # The expected length of the customer record can be change base on requirement level
+                    expected_length = 4 
                     # Validate the customer record
-                    if len(elements) == 4:
-                        r_id, r_name, discount_rate, value = elements
-                    else:
-                        raise ValueError(f"Invalid customer record {elements} in {self.customer_file}")
+                    if len(elements) == expected_length:
+                        _customer_id, _customer_name, _customer_rate, _customer_value = elements
                     # Validate the customer id and create the customer object
-                    if r_id.startswith("C"):
-                        customer_id = Customer (r_id, r_name, value)
-                        self.customer_list.append(customer_id)
+                    if _customer_id.startswith("C"):
+                        customer = Customer (_customer_id, _customer_name, _customer_value)
+                        self.record_customers.append(customer)
                         line = f.readline()
-                    elif r_id.startswith("M"):
-                        customer_id = Member (r_id, r_name, value)
-                        self.customer_list.append(customer_id)
+                    elif _customer_id.startswith("M"):
+                        customer = Member (_customer_id, _customer_name, _customer_value)
+                        self.record_customers.append(customer)
                         line = f.readline()
-                    elif r_id.startswith("V"):
-                        customer_id = VipMember (r_id, r_name, value)
-                        customer_id.set_rate("rate_1",discount_rate)
-                        self.customer_list.append(customer_id)
+                    elif _customer_id.startswith("V"):
+                        customer = VipMember (_customer_id, _customer_name, _customer_value)
+                        customer.set_rate("rate_1",_customer_rate)
+                        self.record_customers.append(customer)
                         line = f.readline()
                     else:
                         raise ValueError(f"Invalid customer id {id} in {self.customer_file}")
-                    # Validate that the customer id is unique
-                    if r_id in [customer.c_id for customer in self.customer_list]:
-                        raise ValueError(f"Duplicate customer id {id} in {self.customer_file}")
-                    if value in [customer.value for customer in self.customer_list < 0]:
-                        raise ValueError(f"Invalid customer value {value} in {self.customer_file}")
         except FileNotFoundError as exp:
             raise FileNotFoundError(f'File {self.customer_file} is missing!') from exp
     
     def read_product(self):
-        """This function will read the product file and import into the record """
+        """This function will read the product file and import into the record"""
         try:
-            with open(self.product_file,"r", encoding = "utf-8") as f:
+            with open(self.product_file, "r", encoding="utf-8") as f:
                 line = f.readline()
                 while line:
                     elements = line.strip().split(',')
-                    # check the product record type
-                    if elements[0].startswith("P") and len(elements) == 4:
-                        # If line have a standard product record structure
-                        item_id, name, price, stock = elements
-                        # Validate the product id and create the product object
-                        if not item_id.startswith("P"):
-                            raise ValueError(f"Invalid product id {item_id} in {self.product_file}")
-                        if not item_id.startswith('B'):
-                            raise ValueError(f"Invalid product id {item_id} in {self.product_file}")
-                        if price < 0:
-                            raise ValueError(f"Invalid product price {price}in {self.product_file}")
-                        if stock < 0:
-                            raise ValueError(f"Invalid product stock {stock}")
-                        product_id = Product(item_id, name, price, stock)
-                        self.item_list.append(product_id)
-                    elif elements[0].startswith("B") and len(elements) > 4:
-                        # If line have a bundle product record structure
-                        item_id = elements[0]
-                        name = elements[1]
-                        stock = elements[-1]
-                        list_product = []
-                        for i in elements[2:-1]:
-                            # add the product into the list
-                            if not i.startswith("P"):
-                                # Check if the product id is valid
-                                raise ValueError(f"Invalid product id {i} in {self.product_file}")
-                            _product = elements[i]
-                            list_product.append(_product)
-                        if stock < 0:
-                            raise ValueError(f"Invalid bundle stock {stock}")
-                        bundle_id = Bundle(item_id, name, list_product, stock)
-                        self.item_list.append(bundle_id)
+                    # Split expected length for future change
+                    min_length = 4
+                    if elements[0].startswith("P") and len(elements) == min_length:
+                        _item_id, _item_name, _item_price, _item_stock = elements
+                        product = Product(_item_id, _item_name, _item_price, _item_stock)
+                        self.record_items.append(product)
+                    elif elements[0].startswith("B") and len(elements) > min_length:
+                        _item_id = elements[0]
+                        _item_name = elements[1]
+                        _item_stock = elements[-1]
+                        _list_product = [] # Initialise the list of product in the bundle
+                        for product in elements[2:-1]:
+                            #loop through the product id in the bundle and find the product object
+                            product = self.find_product("name", product)
+                            if product is None:
+                                raise ValueError(f"Invalid product record {elements} in {self.product_file}")
+                            list_product.append(product)
+                        bundle = Bundle(_item_id, _item_name, _list_product, _item_stock)
+                        self.record_items.append(bundle)
                     else:
                         raise ValueError(f"Invalid product record {elements} in {self.product_file}")     
-                    # Add the new product into the product id
-                    # Check if the product id is unique
-                    if id in [product.get_id for product in self.item_list]:
-                        raise ValueError(f"Duplicate product id {id}")
-                    line = f.readline() # Read the next line
+                    line = f.readline()
         except FileNotFoundError as exp:
             raise FileNotFoundError(f'File {self.product_file} is missing!') from exp
 
@@ -403,14 +384,20 @@ class Record:
         - return customer detail if customer exit return None if customer does not exit
 
         """
+        if value is None:
+            raise ValueError("Invalid search value")
+        
         for customer in self.customer_list:
-            if getattr(customer,key).strip().lower() == value.strip().lower():
-                return customer # Return the customer if it exit
+            try:
+                if getattr(customer,key).strip().lower() == value.strip().lower():
+                    return customer # Return the customer if it exit
+            except AttributeError:
+                raise ValueError(f"Invalid search key {key}")
         return None # If the customer does not exit return None
         
-    def find_product(self, key:str = "name", search:str = None):
+    def find_item(self, key:str = "name", search:str = None):
         """ 
-        Take a search key and fine the product teails from the product list
+        Take a search key and find the product from the product list
         
         Input:
         - key: can either be product id or name
@@ -418,20 +405,27 @@ class Record:
         Output:
         - return product detail is product exit else print product does not exit
         """
-        for item in self.item_list:
-            if getattr(item,key).strip().lower() == search.strip().lower():
-                return item # Return the product if it exit
-        return None # If the product does not exit return None
+        if search is None:
+            raise ValueError("Invalid search value")
     
-    def list_customer(self):
+        for item in self.record_items:
+            try:
+                if getattr(item,key).strip().lower() == search.strip().lower():
+                    return item # Return the product if it exit
+            except AttributeError:
+                raise ValueError(f"Invalid search key {key}")
+        return None # If the product does not exit return None
+
+
+    def list_record_customers(self):
         """This function will return the list of customer in the record"""
-        for customer in self.customer_list:
+        for customer in self.record_customers:
             customer.display_info()
 
-    def list_product(self):
+    def list_record_items(self):
         """This function will return the list of product in the record"""
-        for product in self.item_list:
-            product.display_info()
+        for item in self.record_items:
+            item.display_info()
     
     def add_customer(self, customer:Customer):
         """
@@ -441,8 +435,8 @@ class Record:
         - customer: the customer object that want to add into the record
         """
         if isinstance(customer, Customer):
-            self.customer_list.append(customer)
-        else:   
+            self.record_customers.append(customer)
+        else:
             raise TypeError("customer must be a Customer object or it subclass")
         
     def add_product(self, product:Product):
@@ -452,17 +446,56 @@ class Record:
         Input:
         - product: the product object that want to add into the record
         """
-        if isinstance(product, Product):
-            self.item_list.append(product)
-        else:    
+        if isinstance(product, Product) or isinstance(product, Bundle):
+            self.record_items.append(product)
+        else:
             raise TypeError("product must be a Product or Bundle object")
     
-def menu(data:Record):
+    def input_info(self):
+        """
+        This function will take information from the client
+        
+        Input:
+        - Data: the main record object that contain the customer and product list
+        """
+        name = input("Please enter the customer name [e.g. Loki]: ")
+        # We will be creating a new customer attributes to track the customer details
+        customer = self.find_customer("name", name)
+        print()
+        product = input("Please enter the product name [e.g. Apple]: ")
+        print()
+        quantity = 
+        print()
+        # If the customer does not exit, we will be creating a new customer and check if they want a membership
+        if customer is None:
+            member_type = new_customer_membership_option()
+            n_id = generate_new_customer_id(member_type, self)
+            new_customer = Customer(n_id, name)
+            self.add_customer(new_customer)
+        return customer, product, quantity
+        
+def generate_new_customer_id(r_type:str, data:Record):
+    """
+    This function will generate a new unique customer id for the new customer
+    
+    Input:
+    - type: the type of customer
+    - data: the record object that contain the customer list
+    """
+    i = 1
+    new_id = r_type + str(len(data.customer_list) + i)
+    while new_id in [customer.get_id for customer in data.customer_list]:
+        i += 1
+        new_id = r_type + str(len(data.customer_list) + i) 
+    return new_id
+
+def menu_loop(data:Record):
     """
     This function will display the menu and run the selected function based on the user input.
+    It will continue to run until the user choose to exit the program
     """
-    def display_menu():
-        """Display the menu"""
+    def display_menu(): # Since display_menu is only use in this function, I will be defining it as a sub function
+        """Sub function to display the menu"""
         print("#"*30)
         print("You can choose from the following option:")
         print("1. Place an order")
@@ -477,7 +510,7 @@ def menu(data:Record):
         print()
         if user_input == "1":
             # Take the information from the client and place an order
-            customer, product, quantity = get_info(data)
+            customer, product, quantity = data.input_client_info()
             place_order(customer, product, quantity)
         elif user_input == "2":
             # Display the customer list
@@ -495,32 +528,8 @@ def menu(data:Record):
         input("Press enter to continue!")
         print()
 
-
-def get_info(data:Record):
-    """
-    This function will take information from the client
-    
-    Input:
-    - Data: the main record object that contain the customer and product list
-    """
-    name = input("Please enter the customer name [e.g. Loki]: ")
-    # We will be creating a new customer attributes to track the customer details
-    customer = data.find_customer("name", name)
-    print()
-    product = get_product_info(data)
-    print()
-    quantity = get_product_quantity(product)
-    print()
-    # If the customer does not exit, we will be creating a new customer and check if they want a membership
-    if customer is None:
-        member_type = get_membership()
-        n_id = generate_new_customer_id(member_type, data)
-        new_customer = Customer(n_id, name)
-        data.add_customer(new_customer)
-    return customer, product, quantity
-
-def get_membership():
-    """This function will take the membership information from the client"""
+def new_customer_membership_option():
+    """This function will take the membership information from a new client who did not have a membership"""
     while True:
         _membership = input("This is a new customer. \
                             Does the customer want to have a membership [e.g. enter y or n]: ")
@@ -537,53 +546,6 @@ def get_membership():
             return "C"
         print('Invalid input. Please enter y or n')
 
-def get_product_info(data: Record):
-    """
-    This function will take information from the client
-    
-    Input:
-    - Data: the main record object that contain the customer and product list
-    """
-    while True:
-        name = input("Please enter the product name [e.g. Apple]: ")
-        # We will be creating a new customer attributes to track the customer details
-        _product = data.find_product("name",name)
-        if _product is not None:
-            return _product
-
-def get_product_quantity(item:Product):
-    """
-    This function will take the product quantity from the client
-    """
-    stock = item.stock
-    while True:
-        try:
-            _quantity = int(input("Please enter the quantity [e.g. 10]: "))
-            if _quantity < 0:
-                print ("Invalid input, please try again")
-            elif _quantity > stock:
-                print("Insufficient stock, please try again")
-            else:
-                return _quantity
-        except ValueError:
-            print("Invalid input, please try again")
-            continue        
-
-def generate_new_customer_id(r_type:str, data:Record):
-    """
-    This function will generate a new unique customer id for the new customer
-    
-    Input:
-    - type: the type of customer
-    - data: the record object that contain the customer list
-    """
-    i = 1
-    new_id = r_type + str(len(data.customer_list) + i)
-    while new_id in [customer.get_id for customer in data.customer_list]:
-        i += 1
-        new_id = r_type + str(len(data.customer_list) + i) 
-    return new_id
-
 def place_order(customer:Customer, product: Product, quantity:int):
     """
     This function will place an order for the customer
@@ -593,6 +555,9 @@ def place_order(customer:Customer, product: Product, quantity:int):
     - product: the product object
     - quantity: the quantity of the product
     """
+      # Check if the inputs are valid
+    if not isinstance(customer, Customer) or not isinstance(product, (Product, Bundle)) or quantity <= 0:
+        raise ValueError("Invalid input")
     # Creating a new order
     new_order = Order(customer, product, quantity)
     # Update the item stock
@@ -606,9 +571,9 @@ def place_order(customer:Customer, product: Product, quantity:int):
         total_price = float(new_price * quantity)
     customer.value = customer.value + total_price
     # Obtain detail from class
-    customer_name = customer.name.strip()
-    product_name = product.name.strip()
-    product_price = product.price
+    customer_name = customer.c_name.strip()
+    product_name = product.p_name.strip()
+    product_price = product.c_price
     # Print the order detail
     print()
     print("="*50)
@@ -621,17 +586,17 @@ def place_order(customer:Customer, product: Product, quantity:int):
     print("="*50)
 
 def main():
-    # Initalise main system record.
-    SysRecord = Record()
-    # read the customer and product file
+    """This will be the main function of the program"""
+    data = Record()
+    # Read the customer and product file
     try:
-        SysRecord.read_customer()
-        SysRecord.read_product()
+        data.read_customer()
+        data.read_product()
     except FileNotFoundError as _e:
         print(f"{_e}")
         sys.exit("Please check the file path and try again!")
-    # Run the menu
-    menu(SysRecord)
+    # Use the menu function to interact with the user
+    menu_loop(data)
 
 
 if __name__ == "__main__":
