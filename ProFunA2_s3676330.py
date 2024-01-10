@@ -8,7 +8,6 @@
 import sys
 import os
 import datetime
-
 # Define the required classes for the program
 class Customer:
     """
@@ -179,7 +178,7 @@ class Product:
         try:
             self.p_id = p_id
             self.p_name = p_name
-            self.p_price = p_price
+            self.p_price = p_price # The price of the product can be None or negative
             self.p_stock = p_stock
         except ValueError as exc:
             raise ValueError("Invalid input") from exc
@@ -221,7 +220,7 @@ class Product:
         print (f"ID: {self.p_id}\n \
                 Name: {self.p_name}\n \
                 Price: {self.p_price}\n \
-                Stock: {self.p_stock}")
+                Stock: {self.p_stock}")      
 # Create a new bundle class that is a composition of product class
 # This is to ensure future change to the product class will not affect the bundle class
 class Bundle:
@@ -248,8 +247,9 @@ class Bundle:
         return self.b_id
     def update_price(self):
         """This function will update the price of the bundle"""
-        # Calculate the price based on the products in the bundle
-        self.b_price = sum(product.get_price() for product in self.b_product_list)
+        # Calculate the price based on the products in the bundle.
+        # Adding method to handle None price.
+        self.b_price = sum(product.get_price() if product.get_price() is not None else 0 for product in self.b_product_list)
     def get_name(self):
         """This function will return the bundle name"""
         return self.b_name
@@ -293,35 +293,41 @@ class Order:
     - product: the product or bundle object
     - quantity: the quantity of the product
     """
-    def __init__(self, customer:Customer, product:Product, quantity:int):
+    def __init__(self, customer:Customer, product:Product, quantity:int, date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")):
         """
         This function will initialise the order object.
         """
         self.customer = customer
         self.product = product
         self.quantity = quantity
-        # Record the date teh order is placed
-        self.date = datetime.datetime.now()
-    
-    def update_product_stock(self):
-        """This function will update the stock of the product after the order is placed"""
-        # For this week requirement I will ignored the case there the value is negative.
-        try:
-            # Calculate the new stock
-            self.product.stock = self.product.stock - self.quantity
-            # Update the product stock
-            self.product.set_stock(self.product.stock)
-        except ValueError as exc:
-            raise ValueError("Invalid quantity") from exc    
-    def update_customer_value(self):
-        """This function will update the customer value after the order is placed"""
-        # Calculate the new value and update it.
-        self.customer.c_value = self.customer.c_value + (self.product.price * self.quantity)
-    def display_info(self):
-        """return a string that represent the order when print"""
-        return f"Customer ID: {self.customer}\n \
-        Product ID: {self.product}\n \
-        Quantity: {self.quantity}"
+        # Record the date the order is placed. If the time was not provided the date is set to the current date and time
+        self.date = date
+    def __str__(self) -> str:
+        """This function will return the string representation of the order"""
+        return f"Order for {self.customer.get_name()} on {self.date}"
+    def update_stock_and_value(self):
+        """This function will update the stock of the product/bundle and customer value after the order is placed"""
+        if isinstance(self.product, Product):
+            # Update stock for product
+            try:
+                # Calculate the new stock
+                _stock = int(self.product.get_stock()) - int(self.quantity)
+                # Update the product stock
+                self.product.set_stock(_stock)
+            except ValueError as exc:
+                raise ValueError("Invalid quantity") from exc
+        elif isinstance(self.product, Bundle):
+            # Update stock for each product in the bundle
+            for product in self.product.get_product_list():
+                try:
+                    # Calculate the new stock
+                    product.stock = int(product.get_stock() )- int(self.quantity)
+                    # Update the product stock
+                    product.set_stock(product.stock)
+                except ValueError as exc:
+                    raise ValueError("Invalid quantity") from exc
+        # Update customer value
+        self.customer.c_value = self.customer.c_value + (self.product.get_price() * float(self.quantity))
 # Create a new record class to store the customer and product list
 class Record:
     """
@@ -331,8 +337,9 @@ class Record:
     # Record will be a singleton pattern class in order to ensure there is only one record in the program.
     _instance = None # Initialise the class variable
     # I will be using os.path.join to ensure the file path to ensure the file path is correct regardless of operating system used.
-    customer_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_CREDITlevel\\customers.txt")
-    product_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_CREDITlevel\\products.txt")
+    customer_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_DIlevel\\customers.txt")
+    product_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_DIlevel\\products.txt")
+    order_file = os.path.join(os.path.dirname(__file__),r"COSC2976_assignment\\files_DIlevel\\orders.txt")
     def __new__(cls, *args, **kwargs):
         """This function will ensure the class is a singleton class"""
         if cls._instance is None:
@@ -343,7 +350,6 @@ class Record:
         """The class will create new instance of customer list and product list"""
         self.record_customers= [] # In this list we will be storing a list of customer id in order to ensure uniqueness
         self.record_items = [] # In this list we will be storeing a list of product id and bundle in order to ensure uniqueness
-
     def read_customer(self):
         """This function will look for the customer file and import it into the record"""
         try:
@@ -385,6 +391,9 @@ class Record:
                     min_length = 4
                     if elements[0].startswith("P") and len(elements) == min_length:
                         _item_id, _item_name, _item_price, _item_stock = elements
+                        if _item_price == " ":
+                            # Mark the price as None if the price is not available
+                            _item_price = None
                         product = Product(_item_id, _item_name, _item_price, _item_stock)
                         self.record_items.append(product)
                     elif elements[0].startswith("B") and len(elements) > min_length:
@@ -407,7 +416,37 @@ class Record:
                     line = f.readline()
         except FileNotFoundError as exp:
             raise FileNotFoundError(f'File {self.product_file} is missing!') from exp
-
+    def read_order(self):
+        """This function will read the order file and import into the record"""
+        try:
+            with open(self.order_file, "r", encoding="utf-8") as f:
+                line = f.readline()
+                while line:
+                    elements = line.strip().split(',')
+                    # Split expected length for future change
+                    min_length = 4
+                    if len(elements) == min_length:
+                        _customer_id, _item_id, _quantity, _date = elements
+                        _date = _date.strip()
+                        # Convert the date string into datetime object
+                        _date = datetime.datetime.strptime(_date, "%d/%m/%Y %H:%M:%S")
+                        # Find the customer object
+                        customer = self.find_customer(_customer_id)
+                        if customer is None:
+                            raise ValueError(f"Invalid customer id {id} in {self.order_file}")
+                        # Find the product object
+                        product = self.find_item(_item_id)
+                        if product is None:
+                            raise ValueError(f"Invalid product id {id} in {self.order_file}")
+                        # Create the order object
+                        order = Order(customer, product, _quantity,_date)
+                        # Update the stock and value
+                        order.update_stock_and_value()
+                    else:
+                        raise ValueError(f"Invalid order record {elements} in {self.order_file}")
+                    line = f.readline()
+        except FileNotFoundError as exp:
+            raise FileNotFoundError(f'File {self.order_file} is missing!') from exp
     def find_customer(self, value:str = None):
         """ 
         Take a search key and find the customer detail from the customer list
@@ -431,7 +470,6 @@ class Record:
             except AttributeError as exc:
                 raise ValueError(f"Invalid search key {_value}") from exc
         return None # If the customer does not exit return None
-        
     def find_item(self, value:str = None):
         """ 
         Take a search key and find the product from the product list
@@ -497,81 +535,121 @@ class Record:
         Input:
         - Data: the main record object that contain the customer and product list
         """
-        name = input("Please enter the customer name [e.g. Loki]: ")
-        # We will be creating a new customer attributes to track the customer details
-        customer = self.find_customer(name)
-        print()
-        product = input("Please enter the product name [e.g. Apple]: ")
-        print()
-        quantity = int(input('Please enter the quantity [e.g. 1]: '))
-        print()
-        # If the customer does not exit, we will be creating a new customer and check if they want a membership
-        if customer is None:
-            member_type = new_customer_membership_option()
-            _id = generate_new_customer_id(member_type, self)
-            new_customer = Customer(_id, name)
-            self.add_customer(new_customer)
-        return customer, product, quantity
-        
-def generate_new_customer_id(r_type:str, data:Record):
-    """
-    This function will generate a new unique customer id for the new customer
-    
-    Input:
-    - type: the type of customer
-    - data: the record object that contain the customer list
-    """
-    i = 1
-    new_id = r_type + str(len(data.record_customers) + i)
-    while new_id in [customer.get_id for customer in data.record_customers]:
-        i += 1
-        new_id = r_type + str(len(data.record_customers) + i)
-    return new_id
 
-def menu_loop(data:Record):
-    """
-    This function will display the menu and run the selected function based on the user input.
-    It will continue to run until the user choose to exit the program
-    """
-    def display_menu(): # Since display_menu is only use in this function, I will be defining it as a sub function
-        """Sub function to display the menu"""
-        print("#"*30)
-        print("You can choose from the following option:")
-        print("1. Place an order")
-        print("2. Display exiting customers")
-        print("3. Display exiting products")
-        print("0. Exit the program")
-        print("#"*30)
+        _name = input("Please enter the customer name [e.g. Loki]: ")
+        # We will be creating a new customer attributes to track the customer details
+        _customer = self.find_customer(_name)
         print()
-    while True:
-        display_menu()
-        user_input = input("Choose one option: ")
+        while True:
+            _item = input("Please enter the product name [e.g. Apple]: ")
+            # We will be creating a new product attributes to track the product details
+            _item = self.find_item(_item)
+            if _item is None:
+                print("Item does not exit. Please try again.")
+                continue
+            if _item.get_price() is None or _item.get_price() < 0:
+                print("Item price is invalid. Please try again.")
+                continue
+            # If the item 
+            break
         print()
-        if user_input == "1":
-            # Take the information from the client and place an order
-            customer, product, quantity = data.input_info()
-            place_order(customer, product, quantity)
-        elif user_input == "2":
-            # Display the customer list
-            data.list_record_customers()
-        elif user_input == "3":
-            # Display the product list
-            data.list_record_items()
-        elif user_input == "0":
-            sys.exit("Thank you for using the program!")
-        else:
-            print("Invalid input, please try again")
-            continue
-        # Pause the program and wait for the user to press enter to continue
+        while True:
+            try:
+                _quantity = int(input('Please enter the quantity [e.g. 1]: '))
+                if _quantity <= 0:
+                    print("Quantity must be a positive number. Please try again.")
+                    continue
+                break
+            except ValueError:
+                print("Invalid input. Please enter a valid quantity.")
         print()
-        input("Press enter to continue!")
-        print()
+        # If the customer does not exist, we will be creating a new customer and check if they want a membership
+        if _customer is None:
+            member_type = new_customer_membership_option()
+            _id = self.generate_new_customer_id(member_type)
+            new_customer = Customer(_id, _name)
+            self.add_customer(new_customer)
+        return _customer, _item, _quantity
+    def generate_new_customer_id(self, r_type:str):
+        """
+        This function will generate a new unique customer id for the new customer
+            
+        Input:
+        - type: the type of customer
+        - data: the record object that contain the customer list
+        """
+        i = 1
+        new_id = r_type + str(len(self.record_customers) + i)
+        while new_id in [customer.get_id for customer in self.record_customers]:
+            i += 1
+            new_id = r_type + str(len(self.record_customers) + i)
+        return new_id
+# Define the main interactive method
+    def menu_loop(self):
+        """
+        This function will display the menu and run the selected function based on the user input.
+        It will continue to run until the user choose to exit the program
+        """
+        def display_menu(): # Since display_menu is only use in this function, I will be defining it as a sub function
+            """Sub function to display the menu"""
+            print("#"*30)
+            print("You can choose from the following option:")
+            print("1. Place an order")
+            print("2. Display exiting customers")
+            print("3. Display exiting products")
+            print("0. Exit the program")
+            print("#"*30)
+            print()
+        while True:
+            display_menu()
+            user_input = input("Choose one option: ")
+            print()
+            if user_input == "1":
+                # Take the information from the client and place an order
+                customer, product, quantity = self.input_info()
+                place_order(customer, product, quantity)
+            elif user_input == "2":
+                # Display the customer list
+                self.list_record_customers()
+            elif user_input == "3":
+                # Display the product list
+                self.list_record_items()
+            elif user_input == "4":
+                # Adjust the discount rate for the vip member
+                # TODO: Add new function to interact with customer discount
+                pass
+            elif user_input == "5":
+                new_threshold = float(input("Please enter the new threshold: "))
+                VipMember.set_threshold(new_threshold)
+            elif user_input == "6":
+                #TODO: Display all orders
+                pass
+            elif user_input == "7":
+                #TODO: Display all orders for a customer
+                pass
+            elif user_input == "8":
+                #TODO: Summarize all orders
+                pass
+            elif user_input == "9":
+                #TODO: Review the most valuable customer
+                pass
+            elif user_input == "10":
+                #TODO: Review the most popular product
+                pass
+            elif user_input == "0":
+                sys.exit("Thank you for using the program!")
+            else:
+                print("Invalid input, please try again")
+                continue
+            # Pause the program and wait for the user to press enter to continue
+            print()
+            input("Press enter to continue!")
+            print()
 
 def new_customer_membership_option():
     """This function will take the membership information from a new client who did not have a membership"""
-    print("This is a new customer \n")
     while True:
-        _membership = input("Does the customer want to have a membership [e.g. enter y or n]: ")
+        _membership = input("This is a new customer. Does the customer want to have a membership [e.g. enter y or n]: \n")
         if _membership == "y":
             print("We have two type of membership: V for VIP and M for Member")
             while True:
@@ -594,14 +672,10 @@ def place_order(customer:Customer, product: Product, quantity:int):
     - product: the product object
     - quantity: the quantity of the product
     """
-    # Check if the inputs are valid
-    # TODO: Create a while loop here to prompt the user to enter the correct input
-    if not isinstance(customer, Customer) or not isinstance(product, (Product, Bundle)) or quantity <= 0:
-        raise ValueError("Invalid input")
     # Creating a new order
     new_order = Order(customer, product, quantity)
     # Update the item stock
-    new_order.update_product_stock()
+    new_order.update_stock_and_value()
     # Calculate the discount
     discount_rate, new_price = customer.get_discount(product.price)
     if isinstance(customer, VipMember):
@@ -635,9 +709,13 @@ def main():
     except FileNotFoundError as _e:
         print(f"{_e}")
         sys.exit("Please check the file path and try again!")
+    try:
+        data.read_order()
+    except FileNotFoundError as _e:
+        print(f"{_e}")
+        print("Cannot load the order file. Run as if there is no order previously")
     # Use the menu function to interact with the user
-    menu_loop(data)
-
+    data.menu_loop()
 
 if __name__ == "__main__":
     try:
