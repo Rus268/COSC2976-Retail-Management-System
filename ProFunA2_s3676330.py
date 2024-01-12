@@ -138,7 +138,7 @@ class VipMember(Customer):
     # Update the get_discount method with new calculation
     def get_discount(self, price:float) -> tuple:
         """
-        This function will calculate the discount for the vip member
+        This function will calculate the discount for the vip member and return a tuple
 
         Input:
         - price: the price of the product
@@ -345,6 +345,10 @@ class Order():
     def date(self):
         """This function will return the date the order is placed"""
         return self._date
+    def order_value(self):
+        """This function will return the order value"""
+        _value = sum(float(item.price) * float(quantity) for item, quantity in self._items)
+        return _value
     def update_stock_and_value(self, record:'Record'):
         """This function will update the stock and value of the customer and product
 
@@ -374,14 +378,19 @@ class Order():
                         record_bundle.set_stock(int(record_bundle.stock) - int(quantity))
                 except ValueError as exc:
                     raise ValueError("Invalid quantity") from exc
-            # Once the stock is updated, update the value of the customer
-            self._customer.set_value(float(self._customer.value) + (float(item.price) * float(quantity)))
+                # Once the stock is updated, update the value of the customer if it is a new order
+                self._customer.set_value(float(self._customer.value) + (float(item.price) * float(quantity)))
 # Create a new record class to store the customer and product list
 class Record():
     """
     This class will be the main record for the program. 
     It will load the customer and product file into the record.
     All main function will be run through this class.
+
+    Input:
+    - customer_file: the customer file path
+    - product_file: the product file path
+    - order_file: the order file path
     """
     # Record will be a singleton pattern class in order to ensure there is only one record in the program.
     _instance = None # Initialise the class variable
@@ -392,9 +401,10 @@ class Record():
         return cls._instance
     def __init__(self,_customer_file, _product_file, _order_file):
         """The class will create new instance of customer, product, and order record"""
-        self.record_customers= {}
-        self.record_items = {}
-        self.record_order = {}
+        self.record_customers= {} # Dictionary with customer id as the key and customer object as the value
+        self.record_items = {} # Dictionary with product id as the key and product object as the value
+        self.record_order = {} # Dictionary with customer object as the key and an list of order objects as the value
+        self.new_update = False # Initialise the new update flag to False
         self._customer_file = _customer_file
         self._product_file = _product_file
         self._order_file = _order_file
@@ -492,7 +502,6 @@ class Record():
                             raise ValueError(f"Invalid product id {_item_id} in {self._order_file}")
                         _items.append((_product, _quantity))
                     order = Order(_customer, _items, _date)
-                    order.update_stock_and_value(self)
                     self.add_record(order)
         except FileNotFoundError as exp:
             raise FileNotFoundError(f'File {self._order_file} is missing!') from exp
@@ -542,12 +551,7 @@ class Record():
                 f.write('\n'.join(lines))
         except FileNotFoundError as exp:
             raise FileNotFoundError(f'File {self._order_file} is missing!') from exp
-    def update_order_record_num(self, customer_id:str):
-        """Update the number of order for a customer in order record"""
-        pass
-    def update_order_qty(self,quantity:int):
-        """Update the quantity of the order for a customer in order record"""
-    def read_record(self):
+    def read_record(self) -> None:
         """This function will update the record by reading the customer, product, and order file"""
         try:
             self.read_customer()
@@ -560,19 +564,19 @@ class Record():
         except FileNotFoundError as _e:
             print(f"{_e}\n")
             print("Cannot load the order file. Run as if there is no order previously\n")
-    def write_record(self):
+    def write_record(self) -> None:
         """This function will write the record into the customer, product, and order file"""
         self.write_record_customer()
         self.write_record_product()
         self.write_record_order()
     # Define the find function to find the customer, product, and order
     @staticmethod
-    def search_process(value:str = None):
+    def search_process(value:str = None) -> str:
         """This function will preprocess the value for searching"""
         if value is None:
             raise ValueError("Invalid search value")
         return value.strip().lower()
-    def find_customer(self, value:str = None):
+    def find_customer(self, value:str = None) -> Customer:
         """ 
         Take a search key and find the customer detail from the customer list
         
@@ -593,7 +597,7 @@ class Record():
             except AttributeError as exc:
                 raise ValueError(f"Invalid search key {value}") from exc
         return None # If the customer does not exit return None
-    def find_item(self, value:str = None):
+    def find_item(self, value:str = None) -> Product or Bundle:
         """ 
         Take a search key and find the product from the product list
         
@@ -614,7 +618,7 @@ class Record():
             except AttributeError as exc:
                 raise ValueError(f"Invalid search key {value}") from exc
         return None # If the product does not exit return None
-    def find_order(self, value:Customer = None):
+    def find_order(self, value:Customer = None) -> Order:
         """
         Take a search key and find the order from the order list
 
@@ -630,9 +634,9 @@ class Record():
             try:
                 if self.search_process(value) == self.search_process(item.name):
                     return item # Return the order if it exit
+                return None # If the order does not exit return None
             except AttributeError as exc:
                 raise ValueError(f"Invalid search key {value}") from exc
-            
     def list_record_customers(self):
         """This function will return the list of customer in the record"""
         for customer in self.record_customers.values():
@@ -666,10 +670,6 @@ class Record():
             print(f'{customer.name} orders history:\n')
             print(order)
             print("-"*50)
-    def summarize_all_order(self):
-        """ This function will summarize and display all rpevious order in the record"""
-        # Print the header
-        # print the customer name row following by the product
     def add_record(self, record):
         """
         This function will add a new record into the corresponding record dictionary.
@@ -738,24 +738,26 @@ class Record():
             new_customer = Customer(_id, _name)
             self.add_record(new_customer)
             return new_customer, _items, _quantity
-        return _customer, _item, _quantity
-    def create_order(self, customer, item, quantity):
+        return _customer, _items, _quantity
+    def create_order(self, customer, items: list, date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")):
         """
         This function will create a new order object in the record"
 
         Input:
         - customer: the customer object
+        - items : a list of tuple that contain the (product, quantity)
         - order: the order object which include requirement details
         """
         # Update the item stock that contain within the orders
-        _order = Order(customer, item, quantity)
+        _order = Order(customer, items, date)
         self.add_record(_order)
+        # Update the stock and value of the customer and product in the order
         _order.update_stock_and_value(self)
         _total_order_price = 0
         print()
         print("="*50)
         # Calculate the discount
-        for item, quantity in order.items():
+        for item, quantity in _order.items():
             _discount_rate, _discounted_price = item.get_discount(item.price)
             if isinstance(_order.customer, VipMember):
                 _vip_fee = VipMember.price
@@ -785,43 +787,78 @@ class Record():
             i = max(existing_ids) + 1
         new_id = prefix + str(i)
         return new_id
-    def most_valuable_customer(self):
+    def most_valuable_customer(self) -> str:
         """
         Finds and returns the most valuable customer based on their total purchases.
 
         Returns:
-            str: The name of the most valuable customer.
+            mv_customer: The most valuable customer.
+            max_order_value: The value of the most valuable order.
+            max_value: The total value of the most valuable customer.
         """
         max_value = 0
         max_order_value = 0
         mv_customer = None
         for customer, history in self.record_order.items():
-            if customer.value > max_value:
-                max_value = customer.value
+            if float(customer.value) > float(max_value):
+                max_value = float(customer.value)
                 mv_customer = customer
-                for order,_,_ in history:
-                    if order.value > max_order_value:
-                        max_order_value = order.value
+                for order in history:
+                    if order.order_value() > max_order_value:
+                        max_order_value = order.order_value()
         return mv_customer, max_order_value, max_value
     def most_popular_product(self):
         """
         Returns the most popular product in the retail management system.
 
         This method analyzes the sales data and determines the product that has been sold the most.
-        It returns the name or ID of the most popular product.
+        It returns the name and ID of the most popular product.
 
         Returns:
-            str: The name or ID of the most popular product.
+            str: The name and ID of the most popular product.
         """
         product_orders = {}
-        for orders in self.record_order.items():
-            for order in orders["Order"]:
-                if order.product not in product_orders:
-                    product_orders[order.product] = 1
-                else:
-                    product_orders[order.product] += 1
-        return max(product_orders, key=product_orders.get)
-# Define the main interactive method
+        for _, orders in self.record_order.items(): # In this case, we don't need the customer object
+            for order in orders:
+                for item, quantity in order.items:  # Assuming order.items is a list of tuples (product, quantity)
+                    if item.id not in product_orders:
+                        product_orders[item.id] = (item.name, quantity)
+                    else:
+                        _, prev_quantity = product_orders[item.id]
+                        product_orders[item.id] = (item.name, prev_quantity + quantity)
+        if product_orders:  # Check if the dictionary is not empty
+            most_popular_product_id, (product_name, _) = max(product_orders.items(), key=lambda x: x[1][1])
+            print(f' The most popular product is {product_name} (ID: {most_popular_product_id})')
+        else:
+            print ("No products have been sold.")
+def summarize_all_order(self):
+        """ This function will summarize and display all previous order in the record"""
+        # Print the header
+        print('-'*55)
+        dict_key = []
+        print(" "*15, end='')
+        for item in self.record_items.values():
+            print(f'{item.id:<5}', end='')
+            dict_key.append(item.id)
+        # print the body
+        print()
+        for customer, orders in self.record_order.items():
+            print(f"{customer.name:<15}", end='')
+            for key in dict_key:
+                total = sum(quantity for order in orders for item, quantity in order.items if item == key)
+                print(f"{total:<5}", end='')
+            print() # new line at the end of each row
+        # print the separator
+        print('-'*55)
+        # print the total
+        print('OrderNum:', end='')
+        for customer, orders in self.record_order.items():
+            print(f"{len(orders):<5}", end='')
+        print()
+        print('OrderQty:', end='')
+        for key in dict_key:
+            total = sum(quantity for order in orders for item, quantity in order.items if item == key for customer, orders in self.record_order.items())
+            print(f"{total:<5}", end='')
     def menu_loop(self):
         """
         This function will display the menu and run the selected function based on the user input.
@@ -882,14 +919,13 @@ class Record():
                 _customer = self.find_customer(_customer)
                 self.list_customer_order(_customer)
             elif user_input == "8":
-                #TODO: Summarize all orders
-                pass
+                self.summarize_all_order()
             elif user_input == "9":
-                #TODO: Review the most valuable customer
-                pass
+                customer, max_order_value, max_value = self.most_valuable_customer()
+                print(f'The most valuable customer is {customer.name} with a total value of {max_value:.2f} (AUD).')
+                print(f'{customer.name} most valuable order is {max_order_value:.2f} (AUD).')
             elif user_input == "10":
-                #TODO: Review the most popular product
-                pass
+                self.most_popular_product()
             elif user_input == "0":
                 break
             else:
