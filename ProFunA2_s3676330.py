@@ -143,10 +143,10 @@ class VipMember(Customer):
         Input:
         - price: the price of the product
         """
-        if price <= self.threshold:
-            return (self.discount_rate_1, price * (1- self.discount_rate_1))
+        if float(price) <= self.threshold:
+            return (self.discount_rate_1, float(price) * (1- self.discount_rate_1))
         else:
-            return (self.discount_rate_2, price * (1- self.discount_rate_2))
+            return (self.discount_rate_2, float(price) * (1- self.discount_rate_2))
     def display_info(self) -> str:
         """
        This function will print out the value of the vip member
@@ -208,15 +208,15 @@ class Product:
     def id(self)-> str:
         """This function will return the product id"""
         return self._id
-    @property    
+    @property
     def name(self)-> str:
         """This function will return the product name"""
         return self._name
-    @property    
+    @property
     def price(self)-> float:
         """This function will return the product price"""
         return self._price
-    @property    
+    @property
     def stock(self)-> int:
         """This function will return the product stock"""
         return int(self._stock)
@@ -320,13 +320,15 @@ class Order():
     - product: the product or bundle object
     - quantity: the quantity of the product
     """
-    def __init__(self,_customer:Customer, _items, _date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")):
+    def __init__(self,_customer:Customer, _items, _date = None):
         """
         This function will initialise the order object.
         """
         self._customer = _customer
         self._items = _items # A list of tuple that contain (product, quantity)
         # Record the date the order is placed. If the time was not provided the date is set to the current date and time
+        if _date is None:
+            _date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self._date = _date
     def __str__(self) -> str:
         """This function will return the string representation of the order"""
@@ -693,6 +695,34 @@ class Record():
                 print("Error: Order's customer not found in record_order")
         else:
             raise TypeError("Invalid record type")
+    @staticmethod
+    def continue_option(prompt) -> bool:
+        """
+        This function will ask the user if they want to continue or not
+
+        Output:
+        - return True if the user want to continue else return False
+        """
+        while True:
+            _continue = input(prompt)
+            if _continue.lower() == "n":
+                return False
+            elif _continue.lower() == "y":
+                return True
+            else:
+                print("Invalid input. Please try again.\n")
+                continue
+    @staticmethod
+    def create_customer(id, name, value, type: str = "C"):
+        """Create a Customer object from a list of elements."""
+        if type == "C":
+            return Customer(id, name, value)
+        elif type == "M":
+            return Member(id, name, value)
+        elif type == "V":
+            return VipMember(id, name, value)
+        else:
+            raise ValueError(f"Invalid customer type {type}")
     def input_info(self):
         """
         This function will take information from the client
@@ -713,7 +743,7 @@ class Record():
             if _item is None:
                 print("Item does not exit. Please try again.\n")
                 continue
-            if _item.price is None or _item.price < 0:
+            if _item.price is None or float(_item.price) < 0:
                 print("Item price is invalid. Please try again.\n")
                 continue
             try:
@@ -725,21 +755,18 @@ class Record():
                 print("Invalid input. Please enter a valid quantity.\n")
                 continue
             _items.append((_item, _quantity))
-            _continue = input("Do you want to add more items? [y/n]: \n")
-            if _continue.lower() == "n":
+            if not self.continue_option("Do you want to add more items? [y/n]: \n"):
                 break
-            elif _continue.lower() == "y":
-                continue
         print()
         # If the customer does not exist, we will be creating a new customer and check if they want a membership
         if _customer is None:
             member_type = new_customer_membership_option()
             _id = self.generate_new_id(self.record_customers,member_type)
-            new_customer = Customer(_id, _name)
+            new_customer = self.create_customer(_id, _name, 0, member_type)
             self.add_record(new_customer)
-            return new_customer, _items, _quantity
-        return _customer, _items, _quantity
-    def create_order(self, customer, items: list, date = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")):
+            return new_customer, _items
+        return _customer, _items
+    def create_order(self, customer, items: list):
         """
         This function will create a new order object in the record"
 
@@ -749,7 +776,7 @@ class Record():
         - order: the order object which include requirement details
         """
         # Update the item stock that contain within the orders
-        _order = Order(customer, items, date)
+        _order = Order(customer, items)
         self.add_record(_order)
         # Update the stock and value of the customer and product in the order
         _order.update_stock_and_value(self)
@@ -757,17 +784,18 @@ class Record():
         print()
         print("="*50)
         # Calculate the discount
-        for item, quantity in _order.items():
-            _discount_rate, _discounted_price = item.get_discount(item.price)
-            if isinstance(_order.customer, VipMember):
-                _vip_fee = VipMember.price
-                _total_order_price = float(_discounted_price * quantity + _vip_fee)
+        for item, quantity in _order.items:
+            price = float(item.price)
+            _total_order_price += float(price * quantity)
             print(f'{_order.customer.name} purchases {quantity} x {item.name}')
-            print(f'Unit price: {item.price:.2f} (AUD)')
+            print(f'Unit price: {price:.2f} (AUD)')
+        _discount_rate, _discounted_price = _order.customer.get_discount(_total_order_price)
         if isinstance(_order.customer, VipMember):
+            _vip_fee = VipMember.price
             print(f'Membership price: {_vip_fee:.2f} (AUD) not discounted')
+            _discounted_price += _vip_fee
         print(f'{_order.customer.name} gets a discount of {_discount_rate*100:.0f}%.')
-        print(f'Price to pay: {_total_order_price:.2f} (AUD)')
+        print(f'Price to pay: {_discounted_price:.2f} (AUD)')
         print("="*50)
     @staticmethod
     def generate_new_id(record, prefix:str):
@@ -781,7 +809,7 @@ class Record():
         # Initialise the id number
         i = 1
         # Create a list of numeric part of the record with the same type.
-        existing_ids = [int(item.id.replace(prefix, '')) for item in record.values()]
+        existing_ids = [int(item.id.replace(prefix, '')) for item in record.values() if item.id.startswith(prefix)]
         if existing_ids != []:
             # If the list is not empty, find the max value and add 1 to it.
             i = max(existing_ids) + 1
@@ -831,34 +859,48 @@ class Record():
             print(f' The most popular product is {product_name} (ID: {most_popular_product_id})')
         else:
             print ("No products have been sold.")
-def summarize_all_order(self):
+    def summarize_all_order(self):
         """ This function will summarize and display all previous order in the record"""
         # Print the header
-        print('-'*55)
-        dict_key = []
+        print('-'*60)
+        dict_key = [] # Initialise the dictionary key
         print(" "*15, end='')
-        for item in self.record_items.values():
+        for item in self.record_items.values(): # Print the product id
             print(f'{item.id:<5}', end='')
-            dict_key.append(item.id)
+            dict_key.append(item.id) # Add the product id into the dictionary key
         # print the body
         print()
-        for customer, orders in self.record_order.items():
-            print(f"{customer.name:<15}", end='')
-            for key in dict_key:
-                total = sum(quantity for order in orders for item, quantity in order.items if item == key)
+        for customer, orders in self.record_order.items(): # Loop through the customer and order in order record
+            print(f"{customer.name:<15}", end='') # Print the customer name
+            for key in dict_key: # Loop through the dictionary key
+             # Sum the quantity of the product in the order
+                total = sum(quantity for order in orders for item, quantity in order.items if item.id == key)
                 print(f"{total:<5}", end='')
             print() # new line at the end of each row
         # print the separator
-        print('-'*55)
+        print('-'*60)
         # print the total
-        print('OrderNum:', end='')
-        for customer, orders in self.record_order.items():
-            print(f"{len(orders):<5}", end='')
-        print()
-        print('OrderQty:', end='')
+        # print the total
+        print('OrderNum:', end=' '*6)
         for key in dict_key:
-            total = sum(quantity for order in orders for item, quantity in order.items if item == key for customer, orders in self.record_order.items())
-            print(f"{total:<5}", end='')
+            total_ordres = 0
+            for _, orders in self.record_order.items():
+                for order in orders:
+                    for item, quantity in order.items:
+                        if item.id == key:
+                            total_ordres += 1
+            print(f"{total_ordres:<5}", end='')
+        print()
+        print('OrderQty:', end=' '*6)
+        for key in dict_key:
+            total_qty = 0
+            for _, orders in self.record_order.items():
+                for order in orders:
+                    for item, quantity in order.items:
+                        if item.id == key:
+                            total_qty += quantity
+            print(f"{total_qty:<5}", end='')
+        print()
     def menu_loop(self):
         """
         This function will display the menu and run the selected function based on the user input.
@@ -887,9 +929,8 @@ def summarize_all_order(self):
             print()
             if user_input == "1":
                 # Take the information from the client and place an order
-                customer, product, quantity = self.input_info()
-                order = Order(customer, product, quantity)
-                order.place_order()
+                customer, product = self.input_info()
+                self.create_order(customer, product)
             elif user_input == "2":
                 # Display the customer list
                 self.list_record_customers()
