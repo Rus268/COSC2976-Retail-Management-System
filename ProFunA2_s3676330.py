@@ -5,7 +5,7 @@ This program is a retail management system that allows cashier to place an order
  - 14/12/2023: Create program acording to the requirement for PASS level in week 7.
  - 20/12/2023: Create program acording to the requirement for CREDIT level in week 8.
  - 9/01/2023: Create program acording to the requirement for DISTINCTION level in week 9.
- - 11/01/2024: Create program acording to the requirement for HIGH DISTINCTION level in week 10.
+ - 13/01/2024: Create program acording to the requirement for HIGH DISTINCTION level in week 10.
  """
 import sys
 import os
